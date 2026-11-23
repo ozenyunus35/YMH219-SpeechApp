@@ -26,7 +26,11 @@ public sealed class SistemMetinOkuyucu : IMetinOkuyucu
         sentez.SpeakCompleted += (_, e) =>
         {
             // Durdur'la iptal edilen eski okumanın "bitti" bilgisi yeni okumayı bitmiş göstermesin
-            if (e.Prompt == aktifOkuma && !e.Cancelled)
+            if (e.Prompt != aktifOkuma || e.Cancelled)
+                return;
+            if (e.Error != null)
+                OkumaHatasi?.Invoke(this, "Okuma sırasında hata oluştu: " + e.Error.Message);
+            else
                 OkumaBitti?.Invoke(this, EventArgs.Empty);
         };
     }
@@ -127,6 +131,7 @@ public sealed class SistemMetinOkuyucu : IMetinOkuyucu
 
     public event EventHandler<KelimeEventArgs>? KelimeOkunuyor;
     public event EventHandler? OkumaBitti;
+    public event EventHandler<string>? OkumaHatasi;
 
     public void Dispose()
     {

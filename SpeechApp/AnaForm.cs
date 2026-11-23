@@ -75,6 +75,7 @@ public partial class AnaForm : Form
         okuma = new OkumaYoneticisi(okuyucu);
         okuma.DurumDegisti += (_, _) => UI(OkumaArayuzunuGuncelle);
         okuma.KelimeVurgula += (_, k) => UI(() => KelimeyiVurgula(k.Konum, k.Uzunluk));
+        okuma.HataOlustu += (_, mesaj) => UI(() => Bildir(mesaj, hata: true));
 
         cmbSes.Items.Clear();
         foreach (var ses in okuyucu.Sesler)

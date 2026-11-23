@@ -19,9 +19,11 @@ public sealed class SahteOkuyucu : IMetinOkuyucu
 
     public void KelimeGonder(int konum, int uzunluk) => KelimeOkunuyor?.Invoke(this, new KelimeEventArgs(konum, uzunluk));
     public void BitirGonder() => OkumaBitti?.Invoke(this, EventArgs.Empty);
+    public void HataGonder(string m) => OkumaHatasi?.Invoke(this, m);
 
     public event EventHandler<KelimeEventArgs>? KelimeOkunuyor;
     public event EventHandler? OkumaBitti;
+    public event EventHandler<string>? OkumaHatasi;
     public void Dispose() { }
 }
 

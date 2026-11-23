@@ -46,6 +46,9 @@ public interface IMetinOkuyucu : IDisposable
 
     event EventHandler<KelimeEventArgs>? KelimeOkunuyor;
     event EventHandler? OkumaBitti;
+
+    /// <summary>Okuma sırasında hata olursa (ör. ses çıkış aygıtı yok).</summary>
+    event EventHandler<string>? OkumaHatasi;
 }
 
 public sealed record TanimaSonucu(DateTime Zaman, string Metin, float Guven);

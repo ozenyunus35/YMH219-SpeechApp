@@ -109,6 +109,24 @@ public class OkumaYoneticisiTestleri
     }
 }
 
+public class OkumaHatasiTestleri
+{
+    [Fact]
+    public void MotorHatasi_HazirDurumunaDoner_VeHataOlayiGelir()
+    {
+        var okuyucu = new SahteOkuyucu();
+        var yonetici = new OkumaYoneticisi(okuyucu);
+        string? hata = null;
+        yonetici.HataOlustu += (_, m) => hata = m;
+        yonetici.Basla("metin");
+
+        okuyucu.HataGonder("ses aygıtı yok");
+
+        Assert.Equal(OkumaDurumu.Hazir, yonetici.Durum);
+        Assert.Equal("ses aygıtı yok", hata);
+    }
+}
+
 public class DinlemeYoneticisiTestleri
 {
     private readonly SahteTanima tanima = new();

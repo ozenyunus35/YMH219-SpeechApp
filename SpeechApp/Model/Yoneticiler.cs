@@ -35,7 +35,14 @@ public sealed class OkumaYoneticisi
             Ilerleme = Durum == OkumaDurumu.Okuyor ? 100 : Ilerleme;
             DurumuDegistir(OkumaDurumu.Hazir);
         };
+        okuyucu.OkumaHatasi += (_, mesaj) =>
+        {
+            DurumuDegistir(OkumaDurumu.Hazir);
+            HataOlustu?.Invoke(this, mesaj);
+        };
     }
+
+    public event EventHandler<string>? HataOlustu;
 
     public OkumaDurumu Durum { get; private set; } = OkumaDurumu.Hazir;
 
