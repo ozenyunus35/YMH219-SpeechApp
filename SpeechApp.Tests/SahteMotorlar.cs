@@ -11,7 +11,15 @@ public sealed class SahteOkuyucu : IMetinOkuyucu
     public int Hiz { get; set; }
     public int SesDuzeyi { get; set; } = 100;
 
-    public void OkumayaBasla(string metin) => Cagrilar.Add("basla:" + metin);
+    /// <summary>true ise sonraki okuma "hoparlör yok" gibi bir hata verir.</summary>
+    public bool HataVer { get; set; }
+
+    public void OkumayaBasla(string metin)
+    {
+        if (HataVer)
+            throw new KonusmaHatasi("Ses çıkış aygıtı bulunamadı.");
+        Cagrilar.Add("basla:" + metin);
+    }
     public void Duraklat() => Cagrilar.Add("duraklat");
     public void DevamEt() => Cagrilar.Add("devam");
     public void Durdur() => Cagrilar.Add("durdur");

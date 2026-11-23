@@ -10,7 +10,6 @@ namespace SpeechApp.Servisler;
 public sealed class SistemKonusmaTanima : IKonusmaTanima
 {
     private SpeechRecognitionEngine? motor;
-    private FileStream? dosyaAkisi;     // dosyadan tanırken açık tuttuğumuz .wav
 
     public IReadOnlyList<string> Diller
     {
@@ -35,7 +34,7 @@ public sealed class SistemKonusmaTanima : IKonusmaTanima
     public void MikrofondanDinle()
     {
         Durdur();
-        var m = MotorOlustur();
+        var m = MotorOlustur(null);
         try
         {
             m.SetInputToDefaultAudioDevice();
@@ -53,24 +52,42 @@ public sealed class SistemKonusmaTanima : IKonusmaTanima
     public void DosyadanTani(string wavYolu)
     {
         Durdur();
-        var m = MotorOlustur();
 
         // Dosyayı kendimiz açıyoruz: SetInputToWaveFile hata verince dosyayı kilitli bırakıyordu.
-        FileStream? akis = null;
+        // Akış bu motora ait; sadece bu motor bitince kapanıyor (önceki motorun geç bitişi bunu kapatmasın).
+        FileStream akis;
         try
         {
             akis = new FileStream(wavYolu, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or NotSupportedException or UnauthorizedAccessException)
+        {
+            throw new KonusmaHatasi("Ses dosyası açılamadı: " + ex.Message, ex);
+        }
+
+        SpeechRecognitionEngine m;
+        try
+        {
+            m = MotorOlustur(akis);
+        }
+        catch
+        {
+            akis.Dispose();
+            throw;
+        }
+
+        try
+        {
             m.SetInputToWaveStream(akis);
         }
         catch (Exception ex) when (ex is IOException or ArgumentException or FormatException or InvalidOperationException or UnauthorizedAccessException)
         {
-            akis?.Dispose();
+            akis.Dispose();
             m.Dispose();
             throw new KonusmaHatasi("Ses dosyası okunamadı. Dosyanın PCM .wav formatında olduğundan emin olun.", ex);
         }
 
-        dosyaAkisi = akis;
-        Baslat(m);
+        Baslat(m, akis);
     }
 
     public void Durdur()
@@ -90,7 +107,7 @@ public sealed class SistemKonusmaTanima : IKonusmaTanima
         // motorun kendisi RecognizeCompleted'da serbest bırakılıyor
     }
 
-    private SpeechRecognitionEngine MotorOlustur()
+    private SpeechRecognitionEngine MotorOlustur(FileStream? akis)
     {
         RecognizerInfo? bilgi;
         try
@@ -124,7 +141,7 @@ public sealed class SistemKonusmaTanima : IKonusmaTanima
 
             // Girişi bırak ve .wav dosyasını kapat ki dosya kilitli kalmasın
             try { m.SetInputToNull(); } catch (InvalidOperationException) { }
-            DosyayiKapat();
+            try { akis?.Dispose(); } catch (IOException) { }
             _ = Task.Run(m.Dispose);
             if (aktifti)
                 Bitti?.Invoke(this, EventArgs.Empty);
@@ -132,16 +149,20 @@ public sealed class SistemKonusmaTanima : IKonusmaTanima
         return m;
     }
 
-    private void DosyayiKapat()
-    {
-        dosyaAkisi?.Dispose();
-        dosyaAkisi = null;
-    }
-
-    private void Baslat(SpeechRecognitionEngine m)
+    private void Baslat(SpeechRecognitionEngine m, FileStream? akis = null)
     {
         motor = m;
-        m.RecognizeAsync(RecognizeMode.Multiple);
+        try
+        {
+            m.RecognizeAsync(RecognizeMode.Multiple);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            motor = null;
+            akis?.Dispose();
+            m.Dispose();
+            throw new KonusmaHatasi("Konuşma tanıma başlatılamadı: " + ex.Message, ex);
+        }
     }
 
     public event EventHandler<TanimaSonucu>? Tanindi;
@@ -149,9 +170,7 @@ public sealed class SistemKonusmaTanima : IKonusmaTanima
     public event EventHandler<int>? SesSeviyesi;
     public event EventHandler? Bitti;
 
-    public void Dispose()
-    {
-        Durdur();
-        DosyayiKapat();
-    }
+    // Çalışan motorun dosya akışını burada kapatmıyoruz: motor hâlâ okuyor olabilir.
+    // Durdur() iptal ediyor, akışı RecognizeCompleted kapatıyor.
+    public void Dispose() => Durdur();
 }

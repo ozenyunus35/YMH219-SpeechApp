@@ -40,7 +40,12 @@ public sealed class SistemMetinOkuyucu : IMetinOkuyucu
             throw new KonusmaHatasi("Windows konuşma motoru başlatılamadı: " + ex.Message, ex);
         }
 
-        sentez.SpeakProgress += (_, e) => KelimeOkunuyor?.Invoke(this, new KelimeEventArgs(e.CharacterPosition, e.CharacterCount));
+        sentez.SpeakProgress += (_, e) =>
+        {
+            // Durdurulmuş eski okumanın geç gelen ilerlemesi yeni okumayı karıştırmasın
+            if (e.Prompt == aktifOkuma)
+                KelimeOkunuyor?.Invoke(this, new KelimeEventArgs(e.CharacterPosition, e.CharacterCount));
+        };
         sentez.SpeakCompleted += (_, e) =>
         {
             // Durdur'la iptal edilen eski okumanın "bitti" bilgisi yeni okumayı bitmiş göstermesin
@@ -99,7 +104,10 @@ public sealed class SistemMetinOkuyucu : IMetinOkuyucu
                                     "Metni yine de \"Sesi .wav dosyasına kaydet\" ile dosyaya okutabilirsiniz.");
 
         Durdur();
-        aktifOkuma = sentez.SpeakAsync(metin);
+        // Prompt önce kaydediliyor: olaylar SpeakAsync dönmeden gelirse de "aktif okuma" olarak tanınsın
+        var prompt = new Prompt(metin);
+        aktifOkuma = prompt;
+        sentez.SpeakAsync(prompt);
     }
 
     public void Duraklat()

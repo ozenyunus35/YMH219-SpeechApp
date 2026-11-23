@@ -12,6 +12,29 @@ public partial class AnaForm : Form
         "Buraya yazdığınız metni seçtiğiniz sesle okuyabilir, okumayı duraklatıp devam ettirebilir " +
         "ve isterseniz sesi bir dosyaya kaydedebilirsiniz.";
 
+    private const long EnBuyukMetinDosyasi = 1_000_000;
+
+    /// <summary>
+    /// .txt dosyasını okur. BOM'suz dosya geçerli UTF-8 değilse eski Not Defteri'nin
+    /// Türkçe ANSI kodlaması (Windows-1254) olarak okunuyor, böylece ş/ğ/ı bozulmuyor.
+    /// </summary>
+    internal static string MetinDosyasiOku(string yol)
+    {
+        byte[] veri = File.ReadAllBytes(yol);
+        if (veri.Length >= 2 && (veri[0] == 0xFF && veri[1] == 0xFE || veri[0] == 0xFE && veri[1] == 0xFF))
+            return File.ReadAllText(yol);   // UTF-16 BOM
+        int bas = veri.Length >= 3 && veri[0] == 0xEF && veri[1] == 0xBB && veri[2] == 0xBF ? 3 : 0;
+        try
+        {
+            return new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true).GetString(veri, bas, veri.Length - bas);
+        }
+        catch (System.Text.DecoderFallbackException)
+        {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            return System.Text.Encoding.GetEncoding(1254).GetString(veri);
+        }
+    }
+
     private static readonly Color VurguRengi = Color.FromArgb(255, 222, 236);
 
     private IMetinOkuyucu? okuyucu;
@@ -39,9 +62,20 @@ public partial class AnaForm : Form
     /// <summary>Konuşma motorunun olayları farklı bir thread'den gelebilir; ekranı UI thread'inde güncelle.</summary>
     private void UI(Action islem)
     {
-        if (IsDisposed) return;
-        if (InvokeRequired) BeginInvoke(islem);
-        else islem();
+        if (IsDisposed || Disposing || !IsHandleCreated) return;
+        if (!InvokeRequired)
+        {
+            islem();
+            return;
+        }
+        try
+        {
+            BeginInvoke(() => { if (!IsDisposed) islem(); });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+        {
+            // Pencere kapanırken motorun geç gelen olayı: yok sayılıyor
+        }
     }
 
     // ===================== Açılış =====================
@@ -197,6 +231,8 @@ public partial class AnaForm : Form
 
     private void KelimeyiVurgula(int konum, int uzunluk)
     {
+        if (okuma is null || okuma.Durum == OkumaDurumu.Hazir)
+            return;
         if (konum < 0 || konum + uzunluk > rtbMetin.TextLength)
             return;
 
@@ -298,10 +334,15 @@ public partial class AnaForm : Form
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         try
         {
+            if (new FileInfo(dialog.FileName).Length > EnBuyukMetinDosyasi)
+            {
+                Bildir("Dosya çok büyük (en fazla 1 MB metin açılabilir).", hata: true);
+                return;
+            }
             okuma?.Durdur();
-            rtbMetin.Text = File.ReadAllText(dialog.FileName);
+            rtbMetin.Text = MetinDosyasiOku(dialog.FileName);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
         {
             Bildir("Dosya açılamadı: " + ex.Message, hata: true);
         }

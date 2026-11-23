@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using SpeechApp.Servisler;
 
@@ -32,7 +33,8 @@ public sealed class OkumaYoneticisi
         okuyucu.KelimeOkunuyor += Okuyucu_KelimeOkunuyor;
         okuyucu.OkumaBitti += (_, _) =>
         {
-            Ilerleme = Durum == OkumaDurumu.Okuyor ? 100 : Ilerleme;
+            // Tam bitiş anında duraklatılmış olsa da okuma bitmiştir
+            Ilerleme = Durum != OkumaDurumu.Hazir ? 100 : Ilerleme;
             DurumuDegistir(OkumaDurumu.Hazir);
         };
         okuyucu.OkumaHatasi += (_, mesaj) =>
@@ -58,7 +60,11 @@ public sealed class OkumaYoneticisi
             throw new KonusmaHatasi("Okunacak metin yok. Önce kutuya bir şeyler yazın.");
 
         if (Durum != OkumaDurumu.Hazir)
+        {
+            // Önce eski okuma bitirilip durum Hazır'a alınıyor; yeni okuma başlayamazsa "Okuyor"da takılı kalmasın
             okuyucu.Durdur();
+            DurumuDegistir(OkumaDurumu.Hazir);
+        }
 
         metin = yeniMetin;
         Ilerleme = 0;
@@ -86,11 +92,16 @@ public sealed class OkumaYoneticisi
         if (Durum == OkumaDurumu.Hazir)
             return;
         okuyucu.Durdur();
+        // Elle durdurulan okuma "tamamlandı" görünmesin
+        Ilerleme = 0;
         DurumuDegistir(OkumaDurumu.Hazir);
     }
 
     private void Okuyucu_KelimeOkunuyor(object? sender, KelimeEventArgs e)
     {
+        // Durdurduktan sonra kuyruktan geç gelen kelime olayı ekranı yeniden boyamasın
+        if (Durum == OkumaDurumu.Hazir)
+            return;
         if (metin.Length > 0)
             Ilerleme = Math.Clamp((int)((e.Konum + e.Uzunluk) * 100L / metin.Length), 0, 100);
         KelimeVurgula?.Invoke(this, e);
@@ -108,27 +119,40 @@ public sealed class OkumaYoneticisi
 /// <summary>Tanınan cümlelerin zaman damgalı listesi.</summary>
 public sealed class TanimaGecmisi
 {
+    // Tanıma motoru sonuçları kendi thread'inden ekliyor, ekran ise UI thread'inden okuyor
     private readonly List<TanimaSonucu> sonuclar = new();
+    private readonly object kilit = new();
 
-    public IReadOnlyList<TanimaSonucu> Sonuclar => sonuclar;
+    /// <summary>Listenin o anki kopyası (okurken başka thread ekleme yapabilir).</summary>
+    public IReadOnlyList<TanimaSonucu> Sonuclar
+    {
+        get { lock (kilit) return sonuclar.ToList(); }
+    }
 
     public void Ekle(TanimaSonucu sonuc)
     {
-        if (!string.IsNullOrWhiteSpace(sonuc.Metin))
+        if (string.IsNullOrWhiteSpace(sonuc.Metin))
+            return;
+        lock (kilit)
             sonuclar.Add(sonuc);
     }
 
-    public void Temizle() => sonuclar.Clear();
+    public void Temizle()
+    {
+        lock (kilit)
+            sonuclar.Clear();
+    }
 
     /// <summary>Tüm cümleler, cümle başı büyük harfle ve noktayla birleştirilmiş hali.</summary>
     public string TamMetin()
     {
         var sb = new StringBuilder();
-        foreach (var s in sonuclar)
+        foreach (var s in Sonuclar)
         {
             string c = s.Metin.Trim();
             if (c.Length == 0) continue;
-            c = char.ToUpper(c[0]) + c[1..];
+            // Tanıyıcı İngilizce; Türkçe Windows'ta ToUpper 'i' harfini 'İ' yapıyordu
+            c = char.ToUpper(c[0], CultureInfo.InvariantCulture) + c[1..];
             if (!".!?".Contains(c[^1])) c += ".";
             if (sb.Length > 0) sb.Append(' ');
             sb.Append(c);
@@ -142,7 +166,7 @@ public sealed class TanimaGecmisi
         using var yazici = new StreamWriter(yol, false, new UTF8Encoding(true));
         yazici.WriteLine($"# Konuşma tanıma sonuçları - {DateTime.Now:dd.MM.yyyy HH:mm}");
         yazici.WriteLine();
-        foreach (var s in sonuclar)
+        foreach (var s in Sonuclar)
             yazici.WriteLine($"[{s.Zaman:HH:mm:ss}] ({s.Guven:P0}) {s.Metin}");
         yazici.WriteLine();
         yazici.WriteLine("# Tam metin:");
