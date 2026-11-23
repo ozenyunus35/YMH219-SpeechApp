@@ -9,6 +9,9 @@
     <RootNamespace>SpeechApp</RootNamespace>
     <RollForward>Major</RollForward>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Product>Ses Stüdyosu - YMH219</Product>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
