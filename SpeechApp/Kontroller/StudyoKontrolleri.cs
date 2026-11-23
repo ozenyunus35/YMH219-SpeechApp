@@ -51,8 +51,10 @@ public class StudyoButonu : Button
         FlatAppearance.BorderSize = 0;
         Font = new Font("Segoe UI Semibold", 9.75F);
         Cursor = Cursors.Hand;
-        TabStop = false;
     }
+
+    protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+    protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
 
     [Category("Görünüm")]
     [DefaultValue(StudyoButonTuru.Ikincil)]
@@ -103,7 +105,15 @@ public class StudyoButonu : Button
         }
 
         TextRenderer.DrawText(g, Text, Font, ClientRectangle, yazi,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+
+        // Klavyeyle (Tab) gelindiğinde odak çerçevesi
+        if (Focused && ShowFocusCues)
+        {
+            using var odak = new Pen(Renkler.Mor, 2f) { DashStyle = DashStyle.Dot };
+            using var ic = Renkler.Yuvarlak(RectangleF.Inflate(r, -3, -3), (r.Height - 6) / 2);
+            g.DrawPath(odak, ic);
+        }
     }
 
     private static Color Carp(Color c, float k) => Color.FromArgb(c.A, (int)(c.R * k), (int)(c.G * k), (int)(c.B * k));
@@ -257,7 +267,6 @@ public class MikrofonButonu : Button
         FlatStyle = FlatStyle.Flat;
         FlatAppearance.BorderSize = 0;
         Cursor = Cursors.Hand;
-        TabStop = false;
         zamanlayici.Tick += (_, _) => { nabiz = (nabiz + 0.03f) % 1f; Invalidate(); };
     }
 
@@ -271,12 +280,20 @@ public class MikrofonButonu : Button
 
     protected override void OnMouseEnter(EventArgs e) { uzerinde = true; Invalidate(); base.OnMouseEnter(e); }
     protected override void OnMouseLeave(EventArgs e) { uzerinde = false; Invalidate(); base.OnMouseLeave(e); }
+    protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+    protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
 
     protected override void OnPaint(PaintEventArgs e)
     {
         Graphics g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.Clear(Parent?.BackColor ?? Color.White);
+        if (Focused && ShowFocusCues)
+        {
+            float rr = Math.Min(Width, Height) * 0.30f + 7;
+            using var odak = new Pen(Renkler.Mor, 2f) { DashStyle = DashStyle.Dot };
+            g.DrawEllipse(odak, Width / 2f - rr, Height / 2f - rr, rr * 2, rr * 2);
+        }
 
         float cap = Math.Min(Width, Height);
         float cx = Width / 2f, cy = Height / 2f;

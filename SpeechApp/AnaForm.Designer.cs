@@ -177,7 +177,6 @@ partial class AnaForm
         btnUyariKapat.Name = "btnUyariKapat";
         btnUyariKapat.Size = new Size(30, 28);
         btnUyariKapat.TabIndex = 1;
-        btnUyariKapat.TabStop = false;
         btnUyariKapat.Text = "✕";
         btnUyariKapat.Click += btnUyariKapat_Click;
         //
@@ -351,7 +350,6 @@ partial class AnaForm
         trkSesDuzeyi.Size = new Size(298, 32);
         trkSesDuzeyi.SmallChange = 5;
         trkSesDuzeyi.TabIndex = 6;
-        trkSesDuzeyi.TabStop = false;
         trkSesDuzeyi.TickFrequency = 10;
         trkSesDuzeyi.Value = 100;
         trkSesDuzeyi.ValueChanged += trkSesDuzeyi_ValueChanged;
@@ -387,7 +385,6 @@ partial class AnaForm
         trkHiz.Name = "trkHiz";
         trkHiz.Size = new Size(298, 32);
         trkHiz.TabIndex = 3;
-        trkHiz.TabStop = false;
         trkHiz.TickFrequency = 2;
         trkHiz.ValueChanged += trkHiz_ValueChanged;
         //

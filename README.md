@@ -54,6 +54,18 @@ Windows'un yerleşik konuşma motoru **System.Speech (SAPI)** kullanılıyor; in
 
 Hiçbiri programı kapatmıyor; üstte kapatılabilir bir uyarı şeridi çıkıyor.
 
+### Klavye kısayolları
+
+| Kısayol | İşlev |
+|---|---|
+| `Ctrl+Enter` / `F5` | Sesli oku (okuma sekmesi) · dinlemeyi başlat/durdur (tanıma sekmesi) |
+| `F6` | Duraklat / devam et |
+| `Esc` | Okumayı veya dinlemeyi durdur, uyarıyı kapat |
+| `Ctrl+1` / `Ctrl+2` | Sekmeler arasında geçiş |
+| `Ctrl+O` / `Ctrl+S` | Metin dosyası aç / kaydet |
+
+Bütün butonlara `Tab` ile gelinip `Enter`/`Boşluk` ile basılabiliyor (odaklanan buton çerçeveyle gösteriliyor).
+
 ## Ekran görüntüleri
 
 | Sesli okuma (kelime vurgulu) | Duraklatıldı |

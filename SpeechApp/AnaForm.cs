@@ -91,6 +91,99 @@ public partial class AnaForm : Form
 
         ipucu.SetToolTip(btnWavKaydet, "Metni seçili sesle okuyup .wav dosyası olarak kaydeder");
         ipucu.SetToolTip(btnDosyadanTani, "Mikrofonunuz yoksa önceden kaydedilmiş bir konuşmayı yazıya dökebilirsiniz");
+        ipucu.SetToolTip(btnOku, "Sesli oku (Ctrl+Enter veya F5)");
+        ipucu.SetToolTip(btnDuraklat, "Duraklat / devam et (F6)");
+        ipucu.SetToolTip(btnDurdur, "Okumayı durdur (Esc)");
+        ipucu.SetToolTip(btnTemizle, "Metin kutusunu boşalt");
+        ipucu.SetToolTip(btnMikrofon, "Dinlemeyi başlat / durdur (Ctrl+Enter veya F5)");
+        ipucu.SetToolTip(btnMetinAc, "Metin dosyası aç (Ctrl+O)");
+        ipucu.SetToolTip(btnMetinKaydet, "Metni .txt olarak kaydet (Ctrl+S)");
+        ipucu.SetToolTip(btnYaziKaydet, "Tanıma sonuçlarını .txt olarak kaydet (Ctrl+S)");
+        ipucu.SetToolTip(trkHiz, "Okuma hızı (okuma sırasında değiştirilemez)");
+        ipucu.SetToolTip(trkSesDuzeyi, "Ses düzeyi (okuma sırasında değiştirilemez)");
+        ipucu.SetToolTip(sekmeSecici, "Sekmeler: Ctrl+1 / Ctrl+2");
+
+        // İki sekme paneli tek bir içerik panelinde: uyarı şeridi görünüp kaybolunca içerik her zaman
+        // şeridin altına yerleşiyor (önce mikrofon sekmesinde şerit kartların üstünü örtüyordu)
+        var icerik = new Panel { Dock = DockStyle.Fill, BackColor = pnlOku.BackColor };
+        SuspendLayout();
+        Controls.Remove(pnlOku);
+        Controls.Remove(pnlDinle);
+        icerik.Controls.Add(pnlDinle);
+        icerik.Controls.Add(pnlOku);
+        Controls.Add(icerik);
+        icerik.BringToFront();
+        ResumeLayout(true);
+
+        // Pencere varsayılan boyutundan küçültülünce kartlardaki alt butonlar kesiliyordu
+        MinimumSize = Size;
+        rtbMetin.HideSelection = false;        // vurgulanan kelimeye kaydırma odak yokken de çalışsın
+        rtbYazi.ReadOnly = true;               // her sonuçta yeniden yazılıyor; elle düzenleme kaybolmasın
+        rtbYazi.BackColor = Color.White;
+        rtbMetin.TextChanged += (_, _) => ButonlariGuncelle();
+        lvSonuclar.Resize += (_, _) => SutunlariAyarla();
+        SutunlariAyarla();
+        bildirimZamanlayici.Tick += (_, _) => { bildirimZamanlayici.Stop(); UyariGizle(); };
+        ButonlariGuncelle();
+
+        if (okuyucu != null && okuyucu.Sesler.Count > 0 && !okuyucu.Sesler.Any(s => s.Dil.StartsWith("tr", StringComparison.OrdinalIgnoreCase)))
+            Bildir($"Bu bilgisayarda Türkçe ses yüklü değil; metin {okuyucu.Sesler[0].Dil} sesiyle okunacak, Türkçe telaffuz bozuk olabilir.", hata: false);
+    }
+
+    private readonly System.Windows.Forms.Timer bildirimZamanlayici = new() { Interval = 6000 };
+
+    private void SutunlariAyarla()
+    {
+        int kalan = lvSonuclar.ClientSize.Width - colSaat.Width - colGuven.Width - SystemInformation.VerticalScrollBarWidth - 4;
+        if (kalan > 100)
+            colMetin.Width = kalan;
+    }
+
+    /// <summary>Boş metin / sonuç yokken işe yaramayan butonlar pasif.</summary>
+    private void ButonlariGuncelle()
+    {
+        bool metinVar = rtbMetin.Text.Trim().Length > 0;
+        bool okumaHazir = (okuma?.Durum ?? OkumaDurumu.Hazir) == OkumaDurumu.Hazir;
+        btnMetinKaydet.Enabled = metinVar;
+        btnWavKaydet.Enabled = metinVar && okumaHazir && (okuyucu?.Sesler.Count ?? 0) > 0;
+        btnTemizle.Enabled = metinVar;
+        btnYaziKaydet.Enabled = lvSonuclar.Items.Count > 0;
+        btnYaziTemizle.Enabled = lvSonuclar.Items.Count > 0 || rtbYazi.TextLength > 0;
+    }
+
+    // Klavye kısayolları
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        bool okuSekmesi = pnlOku.Visible;
+        switch (keyData)
+        {
+            case Keys.Control | Keys.Enter:
+            case Keys.F5:
+                if (okuSekmesi) { if (btnOku.Enabled) OkumayaBasla(); }
+                else MikrofonDugmesi();
+                return true;
+            case Keys.F6:
+                if (okuSekmesi && btnDuraklat.Enabled) okuma?.DuraklatVeyaDevamEt();
+                return true;
+            case Keys.Escape:
+                if (okuSekmesi && okuma is { Durum: not OkumaDurumu.Hazir }) okuma.Durdur();
+                else if (!okuSekmesi && dinleme is { Durum: not DinlemeDurumu.Hazir }) dinleme.Durdur();
+                else if (pnlUyari.Visible) UyariGizle();
+                return true;
+            case Keys.Control | Keys.D1:
+                sekmeSecici.Secili = 0;
+                return true;
+            case Keys.Control | Keys.D2:
+                sekmeSecici.Secili = 1;
+                return true;
+            case Keys.Control | Keys.O:
+                if (okuSekmesi) btnMetinAc.PerformClick();
+                return true;
+            case Keys.Control | Keys.S:
+                (okuSekmesi ? btnMetinKaydet : btnYaziKaydet).PerformClick();
+                return true;
+        }
+        return base.ProcessCmdKey(ref msg, keyData);
     }
 
     private void OkuyucuyuHazirla()
@@ -118,9 +211,9 @@ public partial class AnaForm : Form
         if (cmbSes.Items.Count > 0)
         {
             // Salt okunur olunca RichTextBox griye dönüyor; vurgu temizlenirken lekeler kalmasın diye sabit beyaz
-        rtbMetin.BackColor = Color.White;
+            rtbMetin.BackColor = Color.White;
 
-        // Türkçe ses varsa onu seç
+            // Türkçe ses varsa onu seç
             var turkce = okuyucu.Sesler.FirstOrDefault(s => s.Dil.StartsWith("tr", StringComparison.OrdinalIgnoreCase));
             cmbSes.SelectedItem = turkce ?? okuyucu.Sesler[0];
         }
@@ -196,6 +289,10 @@ public partial class AnaForm : Form
 
     private void btnTemizle_Click(object? sender, EventArgs e)
     {
+        if (rtbMetin.TextLength > 0 &&
+            MessageBox.Show(this, "Metin kutusu boşaltılsın mı?", "Temizle", MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            return;
         okuma?.Durdur();
         rtbMetin.Clear();
         rtbMetin.Focus();
@@ -212,6 +309,11 @@ public partial class AnaForm : Form
         btnDuraklat.Text = durum == OkumaDurumu.Duraklatildi ? "▶  Devam et" : "❚❚  Duraklat";
         rtbMetin.ReadOnly = !hazir;
         cmbSes.Enabled = hazir && (okuyucu?.Sesler.Count ?? 0) > 0;
+        // Hız ve ses düzeyi okuma başlarken motora veriliyor; okurken değiştirmek işe yaramadığı için kilitli
+        trkHiz.Enabled = trkSesDuzeyi.Enabled = hazir;
+        // Okurken mikrofon kendi sesimizi duymasın
+        btnMikrofon.Enabled = hazir || (dinleme?.Durum ?? DinlemeDurumu.Hazir) != DinlemeDurumu.Hazir;
+        ButonlariGuncelle();
         dalgaOku.Aktif = durum == OkumaDurumu.Okuyor;
 
         int ilerleme = okuma?.Ilerleme ?? 0;
@@ -313,6 +415,8 @@ public partial class AnaForm : Form
         try
         {
             UseWaitCursor = true;
+            btnWavKaydet.Enabled = false;
+            Refresh();     // uzun metinde pencere donmuş gibi görünmesin, bekleme imleci hemen çizilsin
             okuyucu.DosyayaKaydet(rtbMetin.Text, yol);
             Bildir($"Ses kaydedildi: {Path.GetFileName(yol)}  ({new FileInfo(yol).Length / 1024} KB)", hata: false);
             return true;
@@ -325,6 +429,7 @@ public partial class AnaForm : Form
         finally
         {
             UseWaitCursor = false;
+            ButonlariGuncelle();
         }
     }
 
@@ -431,6 +536,7 @@ public partial class AnaForm : Form
             item.ForeColor = Renkler.Turuncu;      // düşük güvenli sonuçları farklı göster
         lvSonuclar.Items.Add(item);
         item.EnsureVisible();
+        ButonlariGuncelle();
     }
 
     private void DinlemeArayuzunuGuncelle()
@@ -439,12 +545,14 @@ public partial class AnaForm : Form
         btnMikrofon.Dinliyor = durum != DinlemeDurumu.Hazir;
         dalgaDinle.Aktif = durum != DinlemeDurumu.Hazir;
         btnDosyadanTani.Enabled = durum == DinlemeDurumu.Hazir;
+        bool okumaHazir = (okuma?.Durum ?? OkumaDurumu.Hazir) == OkumaDurumu.Hazir;
+        btnMikrofon.Enabled = okumaHazir || durum != DinlemeDurumu.Hazir;
         cmbDil.Enabled = durum == DinlemeDurumu.Hazir && (tanima?.Diller.Count ?? 0) > 0;
 
         lblMikDurum.Text = durum switch
         {
             DinlemeDurumu.MikrofonDinleniyor => "Dinleniyor, konuşabilirsiniz",
-            DinlemeDurumu.DosyaIsleniyor => "Ses dosyası işleniyor...",
+            DinlemeDurumu.DosyaIsleniyor => "Ses dosyası işleniyor... (durdurmak için tıklayın)",
             _ => "Dinlemek için mikrofona tıklayın"
         };
         lblMikDurum.ForeColor = durum == DinlemeDurumu.Hazir ? Renkler.Yazi : Renkler.GulKoyu;
@@ -459,6 +567,7 @@ public partial class AnaForm : Form
         dinleme?.Gecmis.Temizle();
         rtbYazi.Clear();
         lvSonuclar.Items.Clear();
+        ButonlariGuncelle();
     }
 
     private void btnYaziKaydet_Click(object? sender, EventArgs e)
@@ -494,6 +603,7 @@ public partial class AnaForm : Form
     {
         pnlOku.Visible = sekmeSecici.Secili == 0;
         pnlDinle.Visible = sekmeSecici.Secili == 1;
+        PerformLayout();      // uyarı şeridi görünürken yerleşim yeniden hesaplansın (kartın üstü kapanmasın)
     }
 
     private void DurumEtiketiniGuncelle()
@@ -520,10 +630,24 @@ public partial class AnaForm : Form
         lblUyari.Text = (hata ? "⚠  " : "✓  ") + mesaj;
         pnlUyari.BackColor = hata ? Color.FromArgb(253, 232, 236) : Color.FromArgb(226, 246, 235);
         lblUyari.ForeColor = hata ? Color.FromArgb(150, 24, 60) : Color.FromArgb(20, 110, 60);
+        // Uzun mesaj kesilmesin: şerit yüksekliği metne göre
+        int genislik = Math.Max(200, lblUyari.Width);
+        int yukseklik = TextRenderer.MeasureText(lblUyari.Text, lblUyari.Font, new Size(genislik, 0),
+            TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height;
+        pnlUyari.Height = Math.Max(40, yukseklik + 18);
         pnlUyari.Visible = true;
+        PerformLayout();
+        // Başarı mesajları birkaç saniye sonra kendiliğinden kapanıyor; hatalar kullanıcı kapatana kadar kalıyor
+        bildirimZamanlayici.Stop();
+        if (!hata)
+            bildirimZamanlayici.Start();
     }
 
-    private void UyariGizle() => pnlUyari.Visible = false;
+    private void UyariGizle()
+    {
+        pnlUyari.Visible = false;
+        PerformLayout();
+    }
 
     private void btnUyariKapat_Click(object? sender, EventArgs e) => UyariGizle();
 
@@ -547,6 +671,7 @@ public partial class AnaForm : Form
     {
         try
         {
+            bildirimZamanlayici.Dispose();
             okuma?.Durdur();
             dinleme?.Durdur();
             okuyucu?.Dispose();
