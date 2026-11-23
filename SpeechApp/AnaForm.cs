@@ -83,7 +83,10 @@ public partial class AnaForm : Form
 
         if (cmbSes.Items.Count > 0)
         {
-            // Türkçe ses varsa onu seç
+            // Salt okunur olunca RichTextBox griye dönüyor; vurgu temizlenirken lekeler kalmasın diye sabit beyaz
+        rtbMetin.BackColor = Color.White;
+
+        // Türkçe ses varsa onu seç
             var turkce = okuyucu.Sesler.FirstOrDefault(s => s.Dil.StartsWith("tr", StringComparison.OrdinalIgnoreCase));
             cmbSes.SelectedItem = turkce ?? okuyucu.Sesler[0];
         }
@@ -399,7 +402,7 @@ public partial class AnaForm : Form
 
         lblMikDurum.Text = durum switch
         {
-            DinlemeDurumu.MikrofonDinleniyor => "Dinleniyor... konuşun (durdurmak için tıklayın)",
+            DinlemeDurumu.MikrofonDinleniyor => "Dinleniyor, konuşabilirsiniz",
             DinlemeDurumu.DosyaIsleniyor => "Ses dosyası işleniyor...",
             _ => "Dinlemek için mikrofona tıklayın"
         };

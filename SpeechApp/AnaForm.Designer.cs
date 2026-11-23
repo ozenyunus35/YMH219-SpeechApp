@@ -435,6 +435,7 @@ partial class AnaForm
         //
         // rtbMetin
         //
+        rtbMetin.BackColor = Color.White;
         rtbMetin.BorderStyle = BorderStyle.None;
         rtbMetin.DetectUrls = false;
         rtbMetin.Dock = DockStyle.Fill;
@@ -542,6 +543,7 @@ partial class AnaForm
         //
         // rtbYazi
         //
+        rtbYazi.BackColor = Color.White;
         rtbYazi.BorderStyle = BorderStyle.None;
         rtbYazi.Dock = DockStyle.Fill;
         rtbYazi.Font = new Font("Segoe UI", 12F);
