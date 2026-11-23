@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Speech.Synthesis;
 
 namespace SpeechApp.Servisler;
@@ -9,6 +10,23 @@ public sealed class SistemMetinOkuyucu : IMetinOkuyucu
 {
     private readonly SpeechSynthesizer sentez;
     private Prompt? aktifOkuma;
+
+    // Bilgisayardaki ses çıkış aygıtı (hoparlör/kulaklık) sayısı
+    [DllImport("winmm.dll")]
+    private static extern uint waveOutGetNumDevs();
+
+    /// <summary>
+    /// Hoparlör yoksa SAPI hata vermeden sonsuza kadar "okuyor" durumunda bekliyor,
+    /// o yüzden okumadan önce kontrol ediyoruz.
+    /// </summary>
+    public static bool SesCikisiVar
+    {
+        get
+        {
+            try { return waveOutGetNumDevs() > 0; }
+            catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return true; }
+        }
+    }
 
     public SistemMetinOkuyucu()
     {
@@ -75,6 +93,10 @@ public sealed class SistemMetinOkuyucu : IMetinOkuyucu
     {
         if (Sesler.Count == 0)
             throw new KonusmaHatasi("Bu bilgisayarda yüklü konuşma sesi bulunamadı. Windows Ayarlar > Saat ve dil > Konuşma bölümünden ses ekleyebilirsiniz.");
+
+        if (!SesCikisiVar)
+            throw new KonusmaHatasi("Ses çıkış aygıtı (hoparlör / kulaklık) bulunamadı. " +
+                                    "Metni yine de \"Sesi .wav dosyasına kaydet\" ile dosyaya okutabilirsiniz.");
 
         Durdur();
         aktifOkuma = sentez.SpeakAsync(metin);
