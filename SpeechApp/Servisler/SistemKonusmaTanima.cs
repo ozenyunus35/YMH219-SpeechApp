@@ -10,6 +10,7 @@ namespace SpeechApp.Servisler;
 public sealed class SistemKonusmaTanima : IKonusmaTanima
 {
     private SpeechRecognitionEngine? motor;
+    private FileStream? dosyaAkisi;     // dosyadan tanırken açık tuttuğumuz .wav
 
     public IReadOnlyList<string> Diller
     {
@@ -53,16 +54,22 @@ public sealed class SistemKonusmaTanima : IKonusmaTanima
     {
         Durdur();
         var m = MotorOlustur();
+
+        // Dosyayı kendimiz açıyoruz: SetInputToWaveFile hata verince dosyayı kilitli bırakıyordu.
+        FileStream? akis = null;
         try
         {
-            m.SetInputToWaveFile(wavYolu);
+            akis = new FileStream(wavYolu, FileMode.Open, FileAccess.Read, FileShare.Read);
+            m.SetInputToWaveStream(akis);
         }
-        catch (Exception ex) when (ex is IOException or ArgumentException or FormatException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or ArgumentException or FormatException or InvalidOperationException or UnauthorizedAccessException)
         {
+            akis?.Dispose();
             m.Dispose();
             throw new KonusmaHatasi("Ses dosyası okunamadı. Dosyanın PCM .wav formatında olduğundan emin olun.", ex);
         }
 
+        dosyaAkisi = akis;
         Baslat(m);
     }
 
@@ -114,11 +121,21 @@ public sealed class SistemKonusmaTanima : IKonusmaTanima
             bool aktifti = motor == m;
             if (aktifti)
                 motor = null;
+
+            // Girişi bırak ve .wav dosyasını kapat ki dosya kilitli kalmasın
+            try { m.SetInputToNull(); } catch (InvalidOperationException) { }
+            DosyayiKapat();
             _ = Task.Run(m.Dispose);
             if (aktifti)
                 Bitti?.Invoke(this, EventArgs.Empty);
         };
         return m;
+    }
+
+    private void DosyayiKapat()
+    {
+        dosyaAkisi?.Dispose();
+        dosyaAkisi = null;
     }
 
     private void Baslat(SpeechRecognitionEngine m)
@@ -132,5 +149,9 @@ public sealed class SistemKonusmaTanima : IKonusmaTanima
     public event EventHandler<int>? SesSeviyesi;
     public event EventHandler? Bitti;
 
-    public void Dispose() => Durdur();
+    public void Dispose()
+    {
+        Durdur();
+        DosyayiKapat();
+    }
 }
