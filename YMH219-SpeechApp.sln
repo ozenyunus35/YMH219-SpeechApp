@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpeechApp", "SpeechApp\SpeechApp.csproj", "{D79AF95E-C136-43DA-BFF8-43164BD68DD6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpeechApp.Tests", "SpeechApp.Tests\SpeechApp.Tests.csproj", "{6780DF09-6D5A-4C9D-BA16-9BD59BA6CEB9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{D79AF95E-C136-43DA-BFF8-43164BD68DD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D79AF95E-C136-43DA-BFF8-43164BD68DD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D79AF95E-C136-43DA-BFF8-43164BD68DD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6780DF09-6D5A-4C9D-BA16-9BD59BA6CEB9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6780DF09-6D5A-4C9D-BA16-9BD59BA6CEB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6780DF09-6D5A-4C9D-BA16-9BD59BA6CEB9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6780DF09-6D5A-4C9D-BA16-9BD59BA6CEB9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
