@@ -11,7 +11,7 @@ Windows'un yerleşik konuşma motoru **System.Speech (SAPI)** kullanılıyor; in
 
 ---
 
-## Ne yapabiliyor?
+## Özellikler
 
 ### 🔊 Metni sesli oku
 
@@ -65,6 +65,15 @@ Hiçbiri programı kapatmıyor; üstte kapatılabilir bir uyarı şeridi çıkı
 | `Ctrl+O` / `Ctrl+S` | Metin dosyası aç / kaydet |
 
 Bütün butonlara `Tab` ile gelinip `Enter`/`Boşluk` ile basılabiliyor (odaklanan buton çerçeveyle gösteriliyor).
+
+## Kullanılan teknolojiler
+
+| | |
+|---|---|
+| Dil / platform | C# 13, **.NET 10**, **Windows Forms** (Visual Studio çözümü) |
+| Konuşma | **System.Speech** NuGet paketi (9.0.0): `SpeechSynthesizer` (okuma), `SpeechRecognitionEngine` (tanıma) |
+| Ses aygıtı kontrolü | `winmm.dll` → `waveOutGetNumDevs` (hoparlör var mı?) |
+| Test | xUnit 2.9 (sahte motorlarla durum testleri + gerçek Windows motoru testleri) |
 
 ## Ekran görüntüleri
 
@@ -198,3 +207,7 @@ GitHub Actions her push'ta bunları Windows üzerinde çalıştırıyor.
 - Tanıma doğruluğu mikrofon kalitesine ve ortam gürültüsüne bağlı.
 - Windows'un yeni "OneCore" sesleri System.Speech tarafından her zaman listelenmeyebilir.
 - Uygulama Windows Forms ve SAPI kullandığı için yalnızca Windows'ta çalışır.
+
+## Öğrenci
+
+**Yunus Emre Özen** · 215542001 · YMH219 Nesne Tabanlı Programlama
